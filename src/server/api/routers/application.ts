@@ -7,6 +7,9 @@ export const applicationRouter = createTRPCRouter({
       where: {
         userId: ctx.session.user.id,
       },
+      orderBy: {
+        appliedDate: "desc",
+      },
     });
 
     return applications;
