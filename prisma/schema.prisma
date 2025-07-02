@@ -16,9 +16,11 @@ datasource db {
 
 enum ApplicationStatus {
     applied
-    interviewing
-    rejected
+    phone_screen
+    technical
+    final_round
     offer
+    rejected
 }
 
 model Application {
@@ -26,9 +28,14 @@ model Application {
     company     String
     position    String
     status      ApplicationStatus?
-    appliedDate DateTime?          @default(now())
+    appliedDate       DateTime?          @default(now())
+    responseDate      DateTime?
+    firstInterviewDate DateTime?
+    offerDate         DateTime?
+    rejectionDate     DateTime?
     link        String?
-    salary      String?
+    salaryMin   Int?
+    salaryMax   Int?
     location    String?
     description String?
 

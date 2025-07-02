@@ -1,199 +1,167 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { Application } from "@prisma/client";
+import { EditApplicationDialog } from "./edit-application";
 
-type JobTableState = {
-  applications: Application[];
-  sortColumn: string;
-  sortDirection: "asc" | "desc";
+type SortDirection = "asc" | "desc";
+
+type ColumnConfig = {
+  label: string;
+  field: keyof Application;
+  sortable: boolean;
+  type: "string" | "date" | "number";
 };
 
+const columns: ColumnConfig[] = [
+  { label: "Company", field: "company", sortable: true, type: "string" },
+  { label: "Position", field: "position", sortable: true, type: "string" },
+  { label: "Status", field: "status", sortable: true, type: "string" },
+  { label: "Applied Date", field: "appliedDate", sortable: true, type: "date" },
+  { label: "Salary", field: "salaryMin", sortable: true, type: "number" },
+  { label: "Location", field: "location", sortable: true, type: "string" },
+  { label: "Actions", field: "id", sortable: false, type: "string" },
+];
+
 export function JobTable() {
-  const [jobs, setJobs] = useState<JobTableState>({
-    applications: [],
-    sortColumn: "appliedDate",
-    sortDirection: "desc",
-  });
+  const [sortColumn, setSortColumn] =
+    useState<keyof Application>("appliedDate");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [editingApplication, setEditingApplication] =
+    useState<Application | null>(null);
 
   const { data: jobData, isLoading, error } = api.application.getAll.useQuery();
 
-  useEffect(() => {
-    if (jobData) {
-      setJobs({
-        applications: jobData,
-        sortColumn: "appliedDate",
-        sortDirection: "desc",
-      });
-    }
-  }, [jobData]);
+  const sortedApplications = useMemo(() => {
+    if (!jobData) return [];
 
-  function handleSort(column: string) {
-    let newDirection: "asc" | "desc" = "asc";
-    if (jobs.sortColumn === column) {
-      newDirection = jobs.sortDirection === "asc" ? "desc" : "asc";
-    }
+    const sorted = [...jobData].sort((a, b) => {
+      const aValue = a[sortColumn];
+      const bValue = b[sortColumn];
 
-    // Create a sorted copy of the applications array
-    const sortedApps = [...jobs.applications].sort((a, b) => {
-      let aValue = a[column as keyof typeof a];
-      let bValue = b[column as keyof typeof b];
+      // Handle null/undefined values
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortDirection === "asc" ? -1 : 1;
+      if (bValue == null) return sortDirection === "asc" ? 1 : -1;
 
-      // Handle undefined/null
-      if (aValue == null) return newDirection === "asc" ? -1 : 1;
-      if (bValue == null) return newDirection === "asc" ? 1 : -1;
+      // Find column config to determine sort type
+      const columnConfig = columns.find((col) => col.field === sortColumn);
+      const sortType = columnConfig?.type ?? "string";
 
-      // Handle dates (assuming ISO strings or Date objects)
-      if (column.toLowerCase().includes("date")) {
-        aValue = new Date(aValue as string).getTime();
-        bValue = new Date(bValue as string).getTime();
+      let comparison = 0;
+
+      if (sortType === "date") {
+        const aTime = new Date(aValue as string).getTime();
+        const bTime = new Date(bValue as string).getTime();
+        comparison = aTime - bTime;
+      } else if (sortType === "number") {
+        comparison = (aValue as number) - (bValue as number);
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
       }
 
-      // Compare numbers
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return newDirection === "asc" ? aValue - bValue : bValue - aValue;
-      }
-
-      // Compare strings
-      return newDirection === "asc"
-        ? String(aValue).localeCompare(String(bValue))
-        : String(bValue).localeCompare(String(aValue));
+      return sortDirection === "asc" ? comparison : -comparison;
     });
 
-    setJobs({
-      applications: sortedApps,
-      sortColumn: column,
-      sortDirection: newDirection,
-    });
+    return sorted;
+  }, [jobData, sortColumn, sortDirection]);
+
+  function handleSort(field: keyof Application) {
+    const newDirection: SortDirection =
+      sortColumn === field && sortDirection === "asc" ? "desc" : "asc";
+
+    setSortColumn(field);
+    setSortDirection(newDirection);
   }
 
-  if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading jobs</div>;
 
   return (
-    <section>
+    <section className="mt-4">
       <div className="border-border bg-surface overflow-x-auto rounded-lg border shadow-md">
         <table className="text-primary w-full border text-left">
           <thead className="bg-surface border-border border-b">
             <tr>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("company")}
-              >
-                <div className="flex items-center gap-2">
-                  Company
-                  <span className="text-muted">
-                    {jobs.sortColumn === "company"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("position")}
-              >
-                <div className="flex items-center gap-2">
-                  Position
-                  <span className="text-muted">
-                    {jobs.sortColumn === "position"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("status")}
-              >
-                <div className="flex items-center gap-2">
-                  Status
-                  <span className="text-muted">
-                    {jobs.sortColumn === "status"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("appliedDate")}
-              >
-                <div className="flex items-center gap-2">
-                  Date
-                  <span className="text-muted">
-                    {jobs.sortColumn === "appliedDate"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("salary")}
-              >
-                <div className="flex items-center gap-2">
-                  Salary
-                  <span className="text-muted">
-                    {jobs.sortColumn === "salary"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
-              <th
-                className="hover:text-accent cursor-pointer px-6 py-3 font-medium transition-colors duration-200"
-                onClick={() => handleSort("location")}
-              >
-                <div className="flex items-center gap-2">
-                  Location
-                  <span className="text-muted">
-                    {jobs.sortColumn === "location"
-                      ? jobs.sortDirection === "asc"
-                        ? "↑"
-                        : "↓"
-                      : ""}
-                  </span>
-                </div>
-              </th>
+              {columns.map((column) => (
+                <th
+                  key={column.field}
+                  className={`px-6 py-3 font-medium ${column.sortable ? "hover:text-accent cursor-pointer" : ""} transition-colors duration-200`}
+                  onClick={
+                    column.sortable ? () => handleSort(column.field) : undefined
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    {column.label}
+                    {column.sortable && (
+                      <span className="text-muted">
+                        {sortColumn === column.field
+                          ? sortDirection === "asc"
+                            ? "↑"
+                            : "↓"
+                          : ""}
+                      </span>
+                    )}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody id="app-table-body">
-            {jobs.applications?.map((application) => (
-              <tr key={application.id}>
-                <td className="px-6 py-4">{application.company}</td>
-                <td className="px-6 py-4">{application.position}</td>
-                <td className="px-6 py-4">
-                  {application.status
-                    ? application.status.charAt(0).toUpperCase() +
-                      application.status.slice(1).toLowerCase()
-                    : ""}
-                </td>
-                <td className="px-6 py-4">
-                  {application.appliedDate
-                    ? new Intl.DateTimeFormat("en-US").format(
-                        application.appliedDate,
-                      )
-                    : ""}
-                </td>
-                <td className="px-6 py-4">{application.salary}</td>
-                <td className="px-6 py-4">{application.location}</td>
-              </tr>
-            ))}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <td key={j} className="px-6 py-4">
+                        <div className="bg-muted h-4 w-3/4 rounded"></div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : sortedApplications?.map((application) => (
+                  <tr key={application.id}>
+                    <td className="px-6 py-4">{application.company}</td>
+                    <td className="px-6 py-4">{application.position}</td>
+                    <td className="px-6 py-4">
+                      {application.status
+                        ? application.status.charAt(0).toUpperCase() +
+                          application.status.slice(1).toLowerCase()
+                        : ""}
+                    </td>
+                    <td className="px-6 py-4">
+                      {application.appliedDate
+                        ? application.appliedDate.toLocaleDateString("en-US", {
+                            timeZone: "UTC",
+                          })
+                        : ""}
+                    </td>
+                    <td className="px-6 py-4">
+                      {application.salaryMin || application.salaryMax
+                        ? `$${application.salaryMin?.toLocaleString() ?? "?"} - $${application.salaryMax?.toLocaleString() ?? "?"}`
+                        : ""}
+                    </td>
+                    <td className="px-6 py-4">{application.location}</td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => setEditingApplication(application)}
+                        className="text-accent hover:text-accent/80 cursor-pointer underline transition-colors duration-200"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
           </tbody>
         </table>
       </div>
+
+      {editingApplication && (
+        <EditApplicationDialog
+          application={editingApplication}
+          open={editingApplication !== null}
+          onClose={() => setEditingApplication(null)}
+        />
+      )}
     </section>
   );
 }
