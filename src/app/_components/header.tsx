@@ -1,6 +1,7 @@
-import { auth } from "~/server/auth";
 import Image from "next/image";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import { auth } from "~/server/auth";
+import { signOutAction } from "~/server/auth/actions";
 
 export async function Header() {
   const session = await auth();
@@ -34,9 +35,14 @@ export async function Header() {
                   {session.user.email}
                 </p>
               </div>
-              <button className="text-primary hover:bg-border hover:text-accent mt-1 w-full rounded-md px-3 py-2 text-left text-sm transition-colors duration-150">
-                Sign Out
-              </button>
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="text-primary hover:bg-border hover:text-accent mt-1 w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm transition-colors duration-150"
+                >
+                  Sign Out
+                </button>
+              </form>
             </div>
           </PopoverPanel>
         </Popover>
