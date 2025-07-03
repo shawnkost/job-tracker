@@ -1,8 +1,13 @@
-import { Header } from "./_components/header";
+import {
+  Header,
+  JobTable,
+  CreateApplication,
+  ApplicationsOverTime,
+  ApplicationStatus,
+  SalaryHistogram,
+} from "./_components";
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
-import { JobTable } from "./_components";
-import { CreateApplication } from "./_components/dialog";
 
 export default async function Home() {
   const session = await auth();
@@ -20,6 +25,11 @@ export default async function Home() {
             Good Morning {session.user.name} 👋
           </h1>
           <CreateApplication />
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <ApplicationsOverTime />
+          <ApplicationStatus />
+          <SalaryHistogram />
         </div>
         <JobTable />
       </main>
