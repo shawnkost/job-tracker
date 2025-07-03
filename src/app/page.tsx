@@ -5,6 +5,7 @@ import {
   ApplicationsOverTime,
   ApplicationStatus,
   SalaryHistogram,
+  ApplicationFunnel,
 } from "./_components";
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
@@ -29,6 +30,7 @@ export default async function Home() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <ApplicationsOverTime />
           <ApplicationStatus />
+          <ApplicationFunnel />
           <SalaryHistogram />
         </div>
         <JobTable />

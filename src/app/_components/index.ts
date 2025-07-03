@@ -1,3 +1,4 @@
+export * from "./application-funnel";
 export * from "./applications-over-time";
 export * from "./application-status";
 export * from "./dialog";
